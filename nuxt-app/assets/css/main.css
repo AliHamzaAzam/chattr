@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+}
+
+@layer components {
+  .chat-bubble {
+    max-width: 20rem;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    word-break: break-words;
+  }
+  
+  @media (min-width: 1024px) {
+    .chat-bubble {
+      max-width: 28rem;
+    }
+  }
+  
+  .chat-bubble-sent {
+    background-color: rgb(59 130 246);
+    color: white;
+    margin-left: auto;
+  }
+  
+  .chat-bubble-received {
+    background-color: rgb(229 231 235);
+    color: rgb(17 24 39);
+    margin-right: auto;
+  }
+  
+  .btn-primary {
+    background-color: rgb(37 99 235);
+    color: white;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    transition: background-color 0.2s;
+  }
+  
+  .btn-primary:hover {
+    background-color: rgb(29 78 216);
+  }
+  
+  .btn-secondary {
+    background-color: rgb(229 231 235);
+    color: rgb(17 24 39);
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    transition: background-color 0.2s;
+  }
+  
+  .btn-secondary:hover {
+    background-color: rgb(209 213 219);
+  }
+  
+  .input-field {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid rgb(209 213 219);
+    border-radius: 0.5rem;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  
+  .input-field:focus {
+    border-color: transparent;
+    box-shadow: 0 0 0 2px rgb(59 130 246);
+  }
+}
