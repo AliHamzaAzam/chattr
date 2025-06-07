@@ -15,6 +15,10 @@ export interface User {
   publicKey: string
   createdAt: Date
   lastSeen: Date
+  // Optional fields for conversation list
+  lastMessage?: string
+  lastMessageTime?: Date
+  unreadCount?: number
 }
 
 /**

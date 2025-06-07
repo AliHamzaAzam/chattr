@@ -88,9 +88,15 @@
                   <h3 class="text-sm font-medium text-gray-900 truncate">
                     {{ conversation.displayName }}
                   </h3>
-                  <span class="text-xs text-gray-500">
-                    {{ formatTime(conversation.lastMessageTime) }}
-                  </span>
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs text-gray-500">
+                      {{ formatTime(conversation.lastMessageTime || conversation.lastSeen) }}
+                    </span>
+                    <div v-if="conversation.unreadCount && conversation.unreadCount > 0" 
+                         class="bg-blue-500 text-white text-xs rounded-full px-2 py-1 min-w-[20px] text-center">
+                      {{ conversation.unreadCount > 99 ? '99+' : conversation.unreadCount }}
+                    </div>
+                  </div>
                 </div>
                 <p class="text-sm text-gray-500 truncate">
                   {{ conversation.lastMessage || 'No messages yet' }}
@@ -259,8 +265,10 @@ definePageMeta({
   middleware: 'auth'
 })
 
+const supabase = useSupabaseClient()
+
 const { authState, signOut } = useAuth()
-const { messages, onlineUsers, initializeChat, sendMessage: sendChatMessage, getChatHistory, searchUsers: searchUsersApi, startTyping, stopTyping } = useChat()
+const { messages, onlineUsers, initializeChat, sendMessage: sendChatMessage, getChatHistory, searchUsers: searchUsersApi, getUserConversations, startTyping, stopTyping } = useChat()
 
 // State
 const searchQuery = ref('')
@@ -286,6 +294,19 @@ const filteredConversations = computed(() => {
 })
 
 // Methods
+const loadConversations = async () => {
+  try {
+    console.log('📋 Loading conversations...')
+    console.log('🔍 Auth state:', authState.value.user?.id)
+    const conversationList = await getUserConversations()
+    console.log('📊 Raw conversation data:', conversationList)
+    conversations.value = conversationList
+    console.log(`✅ Loaded ${conversationList.length} conversations`)
+  } catch (error) {
+    console.error('❌ Failed to load conversations:', error)
+  }
+}
+
 const selectConversation = async (user: User) => {
   selectedConversation.value = user
   showUserMenu.value = false
@@ -301,6 +322,9 @@ const sendMessage = async () => {
     await sendChatMessage(newMessage.value.trim(), selectedConversation.value.id)
     newMessage.value = ''
     scrollToBottom()
+    
+    // Refresh conversations to update last message info
+    await loadConversations()
   } catch (error) {
     console.error('Failed to send message:', error)
   } finally {
@@ -342,7 +366,7 @@ const searchUsers = async () => {
   }
 }
 
-const startChat = (user: User) => {
+const startChat = async (user: User) => {
   showUserSearch.value = false
   userSearchQuery.value = ''
   searchResults.value = []
@@ -353,6 +377,9 @@ const startChat = (user: User) => {
   }
   
   selectConversation(user)
+  
+  // Refresh conversations to get updated data after starting new chat
+  await loadConversations()
 }
 
 const handleSignOut = async () => {
@@ -381,6 +408,43 @@ const formatTime = (date: Date | string) => {
 // Lifecycle
 onMounted(async () => {
   await initializeChat()
+  
+  // Debug: Check database contents
+  try {
+    console.log('🔍 Debug: Checking database contents...')
+    
+    // Check users table
+    const { data: users, error: usersError } = await supabase
+      .from('users')
+      .select('id, username, display_name')
+      .limit(5)
+    
+    if (usersError) {
+      console.error('❌ Users query error:', usersError)
+    } else {
+      console.log('👥 Users in database:', users)
+    }
+    
+    // Check messages table
+    const { data: messages, error: messagesError } = await supabase
+      .from('messages')
+      .select('id, sender_id, receiver_id, timestamp')
+      .limit(5)
+    
+    if (messagesError) {
+      console.error('❌ Messages query error:', messagesError)
+    } else {
+      console.log('💬 Messages in database:', messages)
+    }
+    
+    // Check current user
+    console.log('🔍 Current user:', authState.value.user)
+    
+  } catch (debugError) {
+    console.error('❌ Debug queries failed:', debugError)
+  }
+  
+  await loadConversations()
 })
 
 // Cleanup on unmount

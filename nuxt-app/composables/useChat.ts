@@ -361,6 +361,50 @@ export const useChat = () => {
       return []
     }
   }
+
+  // Get user conversations (users who have exchanged messages)
+  const getUserConversations = async (): Promise<User[]> => {
+    if (!authState.value.user) {
+      console.warn('⚠️ No authenticated user found')
+      return []
+    }
+    
+    try {
+      console.log('📋 Loading user conversations...')
+      console.log('🔍 Current user ID:', authState.value.user.id)
+      
+      // Pass user ID explicitly to avoid auth.uid() issues
+      const { data, error } = await supabase
+        .rpc('get_user_conversations', { current_user_id: authState.value.user.id })
+      
+      if (error) {
+        console.error('❌ Error fetching conversations:', error)
+        return []
+      }
+      
+      console.log('🔍 Raw Supabase response:', data)
+      console.log(`📊 Found ${data?.length || 0} conversations`)
+      
+      const conversationData = data as any[] || []
+      
+      return conversationData.map((conv: any) => ({
+        id: conv.user_id,
+        email: '', // Not returned by function for privacy
+        username: conv.username,
+        displayName: conv.display_name,
+        avatar: conv.avatar,
+        publicKey: conv.public_key,
+        createdAt: new Date(), // Not needed for conversations
+        lastSeen: new Date(conv.last_seen),
+        lastMessage: conv.last_message_content || '',
+        lastMessageTime: conv.last_message_time ? new Date(conv.last_message_time) : new Date(),
+        unreadCount: conv.unread_count || 0
+      }))
+    } catch (error) {
+      console.error('❌ Error getting user conversations:', error)
+      return []
+    }
+  }
   
   // Mark message as delivered
   const markMessageAsDelivered = async (messageId: string) => {
@@ -424,6 +468,7 @@ export const useChat = () => {
     sendMessage,
     getChatHistory,
     searchUsers,
+    getUserConversations,
     markMessageAsRead,
     startTyping,
     stopTyping,

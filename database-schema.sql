@@ -208,6 +208,100 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Function to get all conversations for the current user
+-- Fixed version that accepts user_id as parameter to avoid auth.uid() issues
+CREATE OR REPLACE FUNCTION public.get_user_conversations(current_user_id UUID DEFAULT NULL)
+RETURNS TABLE (
+  user_id UUID,
+  username TEXT,
+  display_name TEXT,
+  avatar TEXT,
+  last_seen TIMESTAMPTZ,
+  last_message_content TEXT,
+  last_message_time TIMESTAMPTZ,
+  unread_count BIGINT,
+  public_key TEXT
+) AS $$
+BEGIN
+  -- Use provided user_id or fall back to auth.uid()
+  IF current_user_id IS NULL THEN
+    current_user_id := auth.uid();
+  END IF;
+  
+  -- If still no user ID, return empty
+  IF current_user_id IS NULL THEN
+    RETURN;
+  END IF;
+  
+  RETURN QUERY
+  WITH conversation_users AS (
+    -- Get all users who have exchanged messages with the current user
+    SELECT DISTINCT
+      CASE 
+        WHEN m.sender_id = current_user_id THEN m.receiver_id
+        ELSE m.sender_id
+      END as other_user_id
+    FROM public.messages m
+    WHERE m.sender_id = current_user_id OR m.receiver_id = current_user_id
+  ),
+  last_messages AS (
+    -- Get the most recent message for each conversation
+    SELECT DISTINCT ON (
+      CASE 
+        WHEN m.sender_id = current_user_id THEN m.receiver_id
+        ELSE m.sender_id
+      END
+    )
+      CASE 
+        WHEN m.sender_id = current_user_id THEN m.receiver_id
+        ELSE m.sender_id
+      END as other_user_id,
+      m.encrypted_content,
+      m.timestamp,
+      ROW_NUMBER() OVER (
+        PARTITION BY 
+          CASE 
+            WHEN m.sender_id = current_user_id THEN m.receiver_id
+            ELSE m.sender_id
+          END
+        ORDER BY m.timestamp DESC
+      ) as rn
+    FROM public.messages m
+    WHERE m.sender_id = current_user_id OR m.receiver_id = current_user_id
+    ORDER BY 
+      CASE 
+        WHEN m.sender_id = current_user_id THEN m.receiver_id
+        ELSE m.sender_id
+      END,
+      m.timestamp DESC
+  ),
+  unread_counts AS (
+    -- Get unread message counts per user
+    SELECT 
+      m.sender_id as other_user_id,
+      COUNT(*) as unread_count
+    FROM public.messages m
+    WHERE m.receiver_id = current_user_id AND m.read = false
+    GROUP BY m.sender_id
+  )
+  SELECT 
+    u.id,
+    u.username,
+    u.display_name,
+    u.avatar,
+    u.last_seen,
+    lm.encrypted_content,
+    lm.timestamp,
+    COALESCE(uc.unread_count, 0),
+    u.public_key
+  FROM conversation_users cu
+  JOIN public.users u ON u.id = cu.other_user_id
+  LEFT JOIN last_messages lm ON lm.other_user_id = cu.other_user_id AND lm.rn = 1
+  LEFT JOIN unread_counts uc ON uc.other_user_id = cu.other_user_id
+  ORDER BY COALESCE(lm.timestamp, u.created_at) DESC;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Clean up any orphaned data (optional)
 -- This will remove any messages that reference non-existent users
 DELETE FROM public.messages 
@@ -224,3 +318,4 @@ GRANT EXECUTE ON FUNCTION public.search_users(TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_chat_messages(UUID, INTEGER) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.mark_messages_as_read(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_unread_count() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_user_conversations(UUID) TO authenticated;
