@@ -145,8 +145,7 @@ export const useChat = () => {
     socketService.onUserOffline(handleUserOffline)
     socketService.onTyping(handleTyping)
     socketService.onMessageSent(handleMessageSent)
-    socketService.onMessageRead(handleMessageRead)
-    socketService.onMessageSent(handleMessageSent)
+    socketService.onMessageDelivered(handleMessageDelivered)
     socketService.onMessageRead(handleMessageRead)
     
     // Mark as initialized
@@ -161,9 +160,12 @@ export const useChat = () => {
         const decryptedContent = await encryptionService.decryptMessage(message.encryptedContent)
         message.content = decryptedContent
         
-        // Mark as delivered immediately
+        // Mark as delivered in database
         await markMessageAsDelivered(message.id)
         message.delivered = true
+        
+        // Send delivery confirmation to sender via socket
+        socketService.emitMessageDelivered(message.id, message.senderId)
       }
       
       messages.value.push(message)
@@ -192,15 +194,26 @@ export const useChat = () => {
   
   // Handle message sent confirmation
   const handleMessageSent = (data: { messageId: string, timestamp: string }) => {
-    // Mark message as delivered in local state
+    console.log('Message sent confirmation:', data)
+    // Message is now sent to server - this doesn't change delivered status
+    // We wait for actual delivery confirmation
+  }
+  
+  // Handle message delivered confirmation
+  const handleMessageDelivered = (data: { messageId: string, deliveredAt: string }) => {
+    console.log('Message delivered confirmation:', data)
+    // Mark message as delivered in local state and database
     const messageIndex = messages.value.findIndex(msg => msg.id === data.messageId)
     if (messageIndex !== -1) {
       messages.value[messageIndex].delivered = true
+      // Update database
+      markMessageAsDelivered(data.messageId)
     }
   }
   
   // Handle message read confirmation
-  const handleMessageRead = (data: { messageId: string, readBy: string }) => {
+  const handleMessageRead = (data: { messageId: string, readBy: string, readAt: string }) => {
+    console.log('Message read confirmation:', data)
     // Mark message as read in local state
     const messageIndex = messages.value.findIndex(msg => msg.id === data.messageId)
     if (messageIndex !== -1) {
@@ -397,8 +410,11 @@ export const useChat = () => {
       console.log('🔍 Current user ID:', authState.value.user.id)
       
       // Pass user ID explicitly to avoid auth.uid() issues
-      const { data, error } = await supabase
-        .rpc('get_user_conversations', { current_user_id: authState.value.user.id }) as { data: any[] | null, error: any }
+      const response = await (supabase as any).rpc('get_user_conversations', { 
+        current_user_id: authState.value.user.id 
+      })
+      
+      const { data, error } = response
       
       if (error) {
         console.error('❌ Error fetching conversations:', error)
@@ -406,9 +422,9 @@ export const useChat = () => {
       }
       
       console.log('🔍 Raw Supabase response:', data)
-      console.log(`📊 Found ${data?.length || 0} conversations`)
+      console.log(`📊 Found ${Array.isArray(data) ? data.length : 0} conversations`)
       
-      const conversationData = data as any[] || []
+      const conversationData = Array.isArray(data) ? data : []
       
       // Decrypt last messages for each conversation
       const conversations = await Promise.all(conversationData.map(async (conv: any) => {
@@ -523,6 +539,7 @@ export const useChat = () => {
     getChatHistory,
     searchUsers,
     getUserConversations,
+    markMessageAsDelivered,
     markMessageAsRead,
     startTyping,
     stopTyping,

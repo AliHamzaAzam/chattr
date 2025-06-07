@@ -84,9 +84,10 @@ CREATE POLICY "Users can read own messages" ON public.messages
 CREATE POLICY "Users can send messages" ON public.messages
   FOR INSERT WITH CHECK (auth.uid() = sender_id);
 
--- Users can update delivery/read status of messages sent to them
+-- Users can update delivery/read status of messages they sent or received
+-- This allows both senders and receivers to update message status for delivery confirmations
 CREATE POLICY "Users can update message status" ON public.messages
-  FOR UPDATE USING (auth.uid() = receiver_id);
+  FOR UPDATE USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
 
 -- Function to safely update last_seen timestamp
 CREATE OR REPLACE FUNCTION public.update_last_seen(user_id UUID)

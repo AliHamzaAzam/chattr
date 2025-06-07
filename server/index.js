@@ -1,6 +1,46 @@
 /**
  * Chattr Socket.IO Server
- * Handles real-time messaging, user presence, and room management
+ * Handles real-time messaging, user presence, and  // Handle messages
+  socket.on('message', (messageData) => {
+    console.log('Message received:', messageData)
+    
+    // Send message to recipient if they're online
+    const recipientSocketId = connectedUsers.get(messageData.receiverId)
+    if (recipientSocketId) {
+      io.to(recipientSocketId).emit('message', messageData)
+    }
+    
+    // Only send 'sent' confirmation back to sender (message reached server)
+    socket.emit('message-sent', {
+      messageId: messageData.id,
+      timestamp: new Date().toISOString()
+    })
+  })
+  
+  // Handle delivery confirmations from recipients
+  socket.on('message-delivered', (data) => {
+    console.log('Message delivery confirmed:', data)
+    const senderSocketId = connectedUsers.get(data.senderId)
+    if (senderSocketId) {
+      io.to(senderSocketId).emit('message-delivered', {
+        messageId: data.messageId,
+        deliveredAt: new Date().toISOString()
+      })
+    }
+  })
+  
+  // Handle read confirmations
+  socket.on('message-read', (data) => {
+    console.log('Message read:', data)
+    const senderSocketId = connectedUsers.get(data.senderId)
+    if (senderSocketId) {
+      io.to(senderSocketId).emit('message-read', {
+        messageId: data.messageId,
+        readBy: socket.userId,
+        readAt: new Date().toISOString()
+      })
+    }
+  })
  * Supports CORS configuration for development and production environments
  */
 
