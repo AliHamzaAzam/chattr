@@ -149,6 +149,7 @@
           
           <div v-for="message in messages" :key="message.id" class="flex">
             <div
+              :ref="el => setMessageRef(el, message)"
               class="chat-bubble"
               :class="message.senderId === authState.user?.id ? 'chat-bubble-sent' : 'chat-bubble-received'"
             >
@@ -260,6 +261,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'
 import type { User } from '~/types'
+import { SocketService } from '~/utils/socket'
 
 definePageMeta({
   middleware: 'auth'
@@ -268,7 +270,7 @@ definePageMeta({
 const supabase = useSupabaseClient()
 
 const { authState, signOut } = useAuth()
-const { messages, onlineUsers, initializeChat, sendMessage: sendChatMessage, getChatHistory, searchUsers: searchUsersApi, getUserConversations, startTyping, stopTyping } = useChat()
+const { messages, onlineUsers, initializeChat, sendMessage: sendChatMessage, getChatHistory, searchUsers: searchUsersApi, getUserConversations, startTyping, stopTyping, markMessageAsRead } = useChat()
 
 // State
 const searchQuery = ref('')
@@ -283,6 +285,8 @@ const searchResults = ref<User[]>([])
 const messagesContainer = ref<HTMLElement>()
 const isTyping = ref(false)
 const typingTimeout = ref<NodeJS.Timeout>()
+const messageRefs = ref<Map<string, HTMLElement>>(new Map())
+const intersectionObserver = ref<IntersectionObserver | null>(null)
 
 // Computed
 const filteredConversations = computed(() => {
@@ -310,6 +314,14 @@ const loadConversations = async () => {
 const selectConversation = async (user: User) => {
   selectedConversation.value = user
   showUserMenu.value = false
+  
+  // Clear previous message refs and reset observer
+  messageRefs.value.clear()
+  if (intersectionObserver.value) {
+    intersectionObserver.value.disconnect()
+    setupIntersectionObserver()
+  }
+  
   await getChatHistory(user.id)
   scrollToBottom()
 }
@@ -405,8 +417,55 @@ const formatTime = (date: Date | string) => {
   return d.toLocaleDateString()
 }
 
+// Message ref handling for intersection observer
+const setMessageRef = (el: HTMLElement | null, message: any) => {
+  if (el && message) {
+    messageRefs.value.set(message.id, el)
+    
+    // Observe message for read receipts if it's a received message
+    if (intersectionObserver.value && message.senderId !== authState.value.user?.id && !message.read) {
+      intersectionObserver.value.observe(el)
+    }
+  }
+}
+
+// Setup intersection observer for read receipts
+const setupIntersectionObserver = () => {
+  intersectionObserver.value = new IntersectionObserver(
+    (entries) => {
+      entries.forEach(async (entry) => {
+        if (entry.isIntersecting) {
+          // Find the message corresponding to this element
+          const messageId = Array.from(messageRefs.value.entries())
+            .find(([, element]) => element === entry.target)?.[0]
+          
+          if (messageId) {
+            const message = messages.value.find(m => m.id === messageId)
+            if (message && message.senderId !== authState.value.user?.id && !message.read) {
+              try {
+                await markMessageAsRead(messageId)
+                // Stop observing this message
+                intersectionObserver.value?.unobserve(entry.target)
+              } catch (error) {
+                console.error('Failed to mark message as read:', error)
+              }
+            }
+          }
+        }
+      })
+    },
+    {
+      threshold: 0.5, // Message is considered read when 50% visible
+      rootMargin: '0px 0px -20px 0px' // Small margin to ensure message is actually visible
+    }
+  )
+}
+
 // Lifecycle
 onMounted(async () => {
+  // Setup intersection observer for read receipts
+  setupIntersectionObserver()
+  
   await initializeChat()
   
   // Debug: Check database contents
@@ -451,6 +510,11 @@ onMounted(async () => {
 onUnmounted(() => {
   const socketService = SocketService.getInstance()
   socketService.disconnect()
+  
+  // Disconnect intersection observer
+  if (intersectionObserver.value) {
+    intersectionObserver.value.disconnect()
+  }
 })
 
 // Close dropdowns when clicking outside

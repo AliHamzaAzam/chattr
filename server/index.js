@@ -89,11 +89,25 @@ io.on('connection', (socket) => {
       io.to(recipientSocketId).emit('message', messageData)
     }
     
-    // Also send back to sender for confirmation
+    // Send delivery confirmation back to sender
     socket.emit('message-sent', {
       messageId: messageData.id,
       timestamp: new Date().toISOString()
     })
+  })
+  
+  // Handle message read receipts
+  socket.on('message-read', (data) => {
+    console.log('Message read:', data)
+    
+    // Notify sender that message was read
+    const senderSocketId = connectedUsers.get(data.senderId)
+    if (senderSocketId) {
+      io.to(senderSocketId).emit('message-read', {
+        messageId: data.messageId,
+        readBy: socket.userId
+      })
+    }
   })
   
   // Handle typing indicators

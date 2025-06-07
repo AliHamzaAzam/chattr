@@ -132,6 +132,26 @@ export class SocketService {
     }
   }
   
+  onMessageSent(callback: (data: { messageId: string, timestamp: string }) => void): void {
+    if (this.socket) {
+      this.socket.off('message-sent') // Remove existing listeners
+      this.socket.on('message-sent', callback)
+    }
+  }
+  
+  onMessageRead(callback: (data: { messageId: string, readBy: string }) => void): void {
+    if (this.socket) {
+      this.socket.off('message-read') // Remove existing listeners
+      this.socket.on('message-read', callback)
+    }
+  }
+  
+  emitMessageRead(messageId: string, senderId: string): void {
+    if (this.socket && this.connected) {
+      this.socket.emit('message-read', { messageId, senderId })
+    }
+  }
+  
   isConnected(): boolean {
     return this.connected
   }

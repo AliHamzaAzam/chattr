@@ -144,6 +144,10 @@ export const useChat = () => {
     socketService.onUserOnline(handleUserOnline)
     socketService.onUserOffline(handleUserOffline)
     socketService.onTyping(handleTyping)
+    socketService.onMessageSent(handleMessageSent)
+    socketService.onMessageRead(handleMessageRead)
+    socketService.onMessageSent(handleMessageSent)
+    socketService.onMessageRead(handleMessageRead)
     
     // Mark as initialized
     initialized.value = true
@@ -156,12 +160,13 @@ export const useChat = () => {
       if (message.receiverId === authState.value.user?.id) {
         const decryptedContent = await encryptionService.decryptMessage(message.encryptedContent)
         message.content = decryptedContent
+        
+        // Mark as delivered immediately
+        await markMessageAsDelivered(message.id)
+        message.delivered = true
       }
       
       messages.value.push(message)
-      
-      // Mark as delivered
-      await markMessageAsDelivered(message.id)
     } catch (error) {
       console.error('Error handling incoming message:', error)
     }
@@ -182,6 +187,24 @@ export const useChat = () => {
       typingUsers.value.add(data.userId)
     } else {
       typingUsers.value.delete(data.userId)
+    }
+  }
+  
+  // Handle message sent confirmation
+  const handleMessageSent = (data: { messageId: string, timestamp: string }) => {
+    // Mark message as delivered in local state
+    const messageIndex = messages.value.findIndex(msg => msg.id === data.messageId)
+    if (messageIndex !== -1) {
+      messages.value[messageIndex].delivered = true
+    }
+  }
+  
+  // Handle message read confirmation
+  const handleMessageRead = (data: { messageId: string, readBy: string }) => {
+    // Mark message as read in local state
+    const messageIndex = messages.value.findIndex(msg => msg.id === data.messageId)
+    if (messageIndex !== -1) {
+      messages.value[messageIndex].read = true
     }
   }
   
@@ -375,7 +398,7 @@ export const useChat = () => {
       
       // Pass user ID explicitly to avoid auth.uid() issues
       const { data, error } = await supabase
-        .rpc('get_user_conversations', { current_user_id: authState.value.user.id })
+        .rpc('get_user_conversations', { current_user_id: authState.value.user.id }) as { data: any[] | null, error: any }
       
       if (error) {
         console.error('❌ Error fetching conversations:', error)
@@ -450,6 +473,19 @@ export const useChat = () => {
       
       if (error) {
         console.error('Error marking message as read:', error)
+        return
+      }
+      
+      // Update local state
+      const messageIndex = messages.value.findIndex(msg => msg.id === messageId)
+      if (messageIndex !== -1) {
+        messages.value[messageIndex].read = true
+        
+        // Notify sender via socket if this is a received message
+        const message = messages.value[messageIndex]
+        if (message.receiverId === authState.value.user?.id) {
+          socketService.emitMessageRead(messageId, message.senderId)
+        }
       }
     } catch (error) {
       console.error('Error marking message as read:', error)
