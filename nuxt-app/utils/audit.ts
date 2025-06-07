@@ -1,4 +1,7 @@
-// Security audit logging utility
+/**
+ * Security audit logging utility for tracking security events
+ * Implements singleton pattern for centralized logging
+ */
 export class AuditLogger {
   private static instance: AuditLogger
   private supabase: any = null
@@ -10,11 +13,19 @@ export class AuditLogger {
     return AuditLogger.instance
   }
   
+  /**
+   * Set the Supabase client for database operations
+   */
   setSupabaseClient(supabase: any): void {
     this.supabase = supabase
   }
   
-  // Log security events
+  /**
+   * Log security events to database and console
+   * @param eventType - Type of security event
+   * @param userId - User ID associated with the event (null for anonymous events)
+   * @param details - Additional event details
+   */
   async logSecurityEvent(
     eventType: 'LOGIN_SUCCESS' | 'LOGIN_FAILURE' | 'PASSWORD_CHANGE' | 'KEY_GENERATION' | 'DECRYPTION_FAILURE' | 'RATE_LIMIT_HIT',
     userId: string | null,
@@ -46,6 +57,10 @@ export class AuditLogger {
     }
   }
   
+  /**
+   * Get client IP address for audit logging
+   * Returns 'client', 'server', or 'unknown' based on context
+   */
   private async getClientIP(): Promise<string> {
     try {
       if (typeof window !== 'undefined') {

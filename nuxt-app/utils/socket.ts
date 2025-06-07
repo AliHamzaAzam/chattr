@@ -1,6 +1,11 @@
 import { io, Socket } from 'socket.io-client'
 import type { SocketMessage, ChatMessage } from '~/types'
 
+/**
+ * Socket service for real-time communication
+ * Implements singleton pattern for managing WebSocket connections
+ * Handles authentication, message sending, and event listeners
+ */
 export class SocketService {
   private static instance: SocketService
   private socket: Socket | null = null
@@ -14,6 +19,10 @@ export class SocketService {
     return SocketService.instance
   }
   
+  /**
+   * Connect to the Socket.IO server with user authentication
+   * @param userId - User ID for authentication
+   */
   connect(userId: string): void {
     // If already connected with the same user, don't reconnect
     if (this.connected && this.socket && this.currentUserId === userId) {
@@ -59,6 +68,9 @@ export class SocketService {
     })
   }
   
+  /**
+   * Disconnect from the Socket.IO server and clean up
+   */
   disconnect(): void {
     if (this.socket) {
       this.socket.disconnect()

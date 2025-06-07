@@ -3,6 +3,11 @@ import { EncryptionService } from '~/utils/encryption'
 import { SocketService } from '~/utils/socket'
 import { ConfigService } from '~/utils/config'
 
+/**
+ * Chat composable providing real-time messaging functionality
+ * Handles encrypted message sending/receiving, room management, and user presence
+ * Integrates with Socket.IO for real-time communication and encryption for security
+ */
 export const useChat = () => {
   const supabase = useSupabaseClient()
   const { authState, updateEncryptionPassword } = useAuth()
@@ -21,7 +26,10 @@ export const useChat = () => {
   const encryptionPassword = useState<string | null>('chat.encryptionPassword', () => null)
   const needsPasswordPrompt = useState<boolean>('chat.needsPasswordPrompt', () => false)
   
-  // Set encryption password securely with validation
+  /**
+   * Set and validate encryption password for message encryption
+   * @param password - User's password for key decryption
+   */
   const setEncryptionPassword = async (password: string) => {
     // Validate password works before storing
     try {

@@ -1,12 +1,19 @@
-// Security plugin to handle sensitive data cleanup
+/**
+ * Security plugin to handle sensitive data cleanup
+ * Automatically clears encryption passwords and keys from memory
+ * on browser events and password expiration
+ */
 import { EncryptionService } from '~/utils/encryption'
 
 export default defineNuxtPlugin(() => {
-  // Clear sensitive data on page unload/refresh
+  // Clear sensitive data on page unload/refresh for security
   if (process.client) {
     const { authState, clearSensitiveData } = useAuth()
     
-    // Clear passwords when user navigates away or closes tab
+    /**
+     * Clear passwords when user navigates away or closes tab
+     * Prevents sensitive data from staying in memory
+     */
     const clearSensitiveDataOnBrowserEvent = () => {
       if (authState.value.encryptionPassword) {
         console.log('🔐 Clearing encryption password due to browser event')
@@ -18,11 +25,14 @@ export default defineNuxtPlugin(() => {
       }
     }
 
-    // Set up event listeners for security cleanup
+    // Set up event listeners for automatic security cleanup
     window.addEventListener('beforeunload', clearSensitiveDataOnBrowserEvent)
     window.addEventListener('pagehide', clearSensitiveDataOnBrowserEvent)
     
-    // Periodic cleanup of expired passwords
+    /**
+     * Periodic cleanup of expired passwords
+     * Checks if stored passwords have exceeded their expiration time
+     */
     const checkPasswordExpiration = () => {
       if (authState.value.passwordExpiration && 
           Date.now() > authState.value.passwordExpiration) {

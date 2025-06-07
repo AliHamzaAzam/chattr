@@ -1,6 +1,13 @@
-// Security utility functions
+/**
+ * Security utility functions for input validation, sanitization, and password checking
+ * Provides static methods for common security operations
+ */
 export class SecurityUtils {
-  // Validate password strength
+  /**
+   * Validate password strength against security requirements
+   * @param password - Password to validate
+   * @returns Object with validation result and error messages
+   */
   static validatePasswordStrength(password: string): { isValid: boolean; errors: string[] } {
     const errors: string[] = []
     
@@ -30,7 +37,11 @@ export class SecurityUtils {
     }
   }
   
-  // Sanitize user input
+  /**
+   * Sanitize user input to prevent XSS and limit length
+   * @param input - User input string to sanitize
+   * @returns Sanitized string
+   */
   static sanitizeInput(input: string): string {
     return input
       .replace(/[<>]/g, '') // Remove potential XSS characters
@@ -38,13 +49,21 @@ export class SecurityUtils {
       .substring(0, 1000) // Limit length
   }
   
-  // Validate email format
+  /**
+   * Validate email format using regex
+   * @param email - Email address to validate
+   * @returns True if email format is valid
+   */
   static validateEmail(email: string): boolean {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     return emailRegex.test(email)
   }
   
-  // Generate secure random string
+  /**
+   * Generate cryptographically secure random string
+   * @param length - Length of the random string (default: 32)
+   * @returns Secure random string
+   */
   static generateSecureRandom(length: number = 32): string {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
     const array = new Uint8Array(length)
@@ -52,7 +71,11 @@ export class SecurityUtils {
     return Array.from(array, byte => chars[byte % chars.length]).join('')
   }
   
-  // Check for common passwords
+  /**
+   * Check if password is in the list of commonly used passwords
+   * @param password - Password to check
+   * @returns True if password is commonly used
+   */
   static isCommonPassword(password: string): boolean {
     const commonPasswords = [
       'password', '123456', '123456789', 'qwerty', 'abc123',

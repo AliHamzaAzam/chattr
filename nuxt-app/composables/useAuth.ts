@@ -4,6 +4,11 @@ import { SecurityUtils } from '~/utils/security'
 import { AuditLogger } from '~/utils/audit'
 import { ConfigService } from '~/utils/config'
 
+/**
+ * Authentication composable providing user registration, login, and session management
+ * Integrates with Supabase for authentication and includes encryption key management
+ * Features security auditing, password validation, and OAuth support
+ */
 export const useAuth = () => {
   const supabase = useSupabaseClient()
   const user = useSupabaseUser()
@@ -28,11 +33,19 @@ export const useAuth = () => {
     passwordExpiration: undefined
   }))
   
+  /**
+   * Register a new user with email/password authentication
+   * @param email - User's email address
+   * @param password - User's password (validated for strength)
+   * @param username - Unique username
+   * @param displayName - User's display name
+   * @returns Promise with registration result and email confirmation status
+   */
   const signUp = async (email: string, password: string, username: string, displayName: string) => {
     try {
       authState.value.isLoading = true
       
-      // Validate inputs
+      // Validate inputs for security
       if (!SecurityUtils.validateEmail(email)) {
         throw new Error('Invalid email format')
       }
@@ -118,7 +131,15 @@ export const useAuth = () => {
     }
   }
   
-  // Helper function to create user profile (called after email confirmation)
+  /**
+   * Create user profile after successful authentication
+   * Generates encryption keys and stores user data in database
+   * @param userId - Supabase user ID
+   * @param email - User's email address
+   * @param username - User's username
+   * @param displayName - User's display name
+   * @param password - Optional password for key encryption (OAuth users don't provide this)
+   */
   const createUserProfile = async (userId: string, email: string, username: string, displayName: string, password?: string) => {
     try {
       // Generate encryption keys
@@ -199,7 +220,7 @@ export const useAuth = () => {
       
       if (error) throw error
       
-      // Initialize encryption service with password - Universal approach
+      // Initialize encryption service with password
       const encryptionService = EncryptionService.getInstance()
       encryptionService.setSupabaseClient(supabase)
       

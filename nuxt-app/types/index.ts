@@ -1,3 +1,11 @@
+/**
+ * TypeScript type definitions for the Chattr application
+ * Defines interfaces for users, messages, authentication, and encryption
+ */
+
+/**
+ * User interface for client-side representation (camelCase)
+ */
 export interface User {
   id: string
   email: string
@@ -9,6 +17,9 @@ export interface User {
   lastSeen: Date
 }
 
+/**
+ * Chat message interface with encryption support
+ */
 export interface ChatMessage {
   id: string
   senderId: string
@@ -20,6 +31,9 @@ export interface ChatMessage {
   read: boolean
 }
 
+/**
+ * Chat room interface for managing conversations
+ */
 export interface ChatRoom {
   id: string
   participants: string[]
@@ -28,6 +42,9 @@ export interface ChatRoom {
   createdAt: Date
 }
 
+/**
+ * Authentication state interface with security features
+ */
 export interface AuthState {
   user: User | null
   isAuthenticated: boolean
@@ -36,7 +53,10 @@ export interface AuthState {
   passwordExpiration?: number // Timestamp when password expires
 }
 
-// Interface for the raw user data from Supabase (snake_case)
+/**
+ * Database user interface for raw data from Supabase (snake_case)
+ * Used for type-safe database operations
+ */
 export interface DbUser {
   id: string;
   email: string;
@@ -51,17 +71,26 @@ export interface DbUser {
   last_seen: string;  // ISO string from DB
 }
 
+/**
+ * Encryption keys interface for RSA key pairs
+ */
 export interface EncryptionKeys {
   publicKey: CryptoKey
   privateKey: CryptoKey
 }
 
+/**
+ * Message payload interface for sending encrypted messages
+ */
 export interface MessagePayload {
   content: string
   receiverId: string
   encryptedContent: string
 }
 
+/**
+ * Socket message interface for real-time communication
+ */
 export interface SocketMessage {
   type: 'message' | 'typing' | 'online' | 'offline'
   data: any

@@ -1,3 +1,9 @@
+/**
+ * Chattr Socket.IO Server
+ * Handles real-time messaging, user presence, and room management
+ * Supports CORS configuration for development and production environments
+ */
+
 const express = require('express')
 const { createServer } = require('http')
 const { Server } = require('socket.io')
@@ -7,7 +13,7 @@ require('dotenv').config()
 const app = express()
 const server = createServer(app)
 
-// Get CORS origins from environment or use defaults
+// Configure CORS origins from environment variables or use secure defaults
 const corsOrigins = process.env.CORS_ORIGINS 
   ? process.env.CORS_ORIGINS.split(',').map(url => url.trim())
   : ["http://localhost:3001", "http://127.0.0.1:3001", "http://localhost:3000", "http://127.0.0.1:3000"]
@@ -28,14 +34,16 @@ const io = new Server(server, {
   }
 })
 
-// Store connected users
-const connectedUsers = new Map()
-const userRooms = new Map()
+// Store connected users and their room assignments
+const connectedUsers = new Map() // userId -> socketId
+const userRooms = new Map()      // userId -> Set of roomIds
 
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id)
   
-  // Handle user authentication
+  /**
+   * Handle user authentication when they connect
+   */
   socket.on('authenticate', (userId) => {
     if (userId) {
       connectedUsers.set(userId, socket.id)

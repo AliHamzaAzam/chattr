@@ -1,4 +1,8 @@
-// https://nuxt.com/docs/api/configuration/nuxt-config
+/**
+ * Nuxt 3 Configuration for Chattr Application
+ * Includes security headers, Supabase integration, and runtime configuration
+ * https://nuxt.com/docs/api/configuration/nuxt-config
+ */
 export default defineNuxtConfig({
   compatibilityDate: '2025-05-15',
   devtools: { enabled: true },
@@ -12,7 +16,8 @@ export default defineNuxtConfig({
     '@nuxtjs/supabase'
   ],
   css: ['~/assets/css/main.css'],
-  // Security headers
+  
+  // Security headers for enhanced protection
   nitro: {
     routeRules: {
       '/**': {
@@ -26,6 +31,8 @@ export default defineNuxtConfig({
       }
     }
   },
+  
+  // Supabase configuration with authentication settings
   supabase: {
     url: process.env.SUPABASE_URL,
     key: process.env.SUPABASE_ANON_KEY,
@@ -42,6 +49,8 @@ export default defineNuxtConfig({
       }
     }
   },
+  
+  // Runtime configuration for server and public variables
   runtimeConfig: {
     jwtSecret: process.env.JWT_SECRET || 'your-secret-key',
     public: {

@@ -1,5 +1,9 @@
-// Universal end-to-end encryption utilities using Web Crypto API
-// Works consistently across all browsers without browser-specific detection
+/**
+ * Universal end-to-end encryption service using Web Crypto API
+ * Works consistently across all browsers without browser-specific detection
+ * Implements RSA-OAEP for key encryption and AES-GCM for message encryption
+ * Includes rate limiting, secure key storage, and password-based key derivation
+ */
 import { ConfigService } from './config'
 
 export class EncryptionService {
@@ -26,7 +30,11 @@ export class EncryptionService {
     return EncryptionService.instance
   }
 
-  // Check rate limiting for password attempts
+  /**
+   * Check rate limiting for password attempts to prevent brute force attacks
+   * @param userId - User ID to check rate limiting for
+   * @throws Error if user is rate limited
+   */
   private checkRateLimit(userId: string): void {
     const attempts = this.failedAttempts.get(userId)
     if (attempts) {
@@ -42,7 +50,10 @@ export class EncryptionService {
     }
   }
 
-  // Record failed attempt
+  /**
+   * Record a failed decryption attempt for rate limiting
+   * @param userId - User ID to record failed attempt for
+   */
   private recordFailedAttempt(userId: string): void {
     const attempts = this.failedAttempts.get(userId) || { count: 0, lastAttempt: 0 }
     attempts.count++
@@ -51,17 +62,28 @@ export class EncryptionService {
     console.warn(`🚨 Failed decryption attempt ${attempts.count}/${this.MAX_ATTEMPTS} for user ${userId}`)
   }
 
-  // Clear failed attempts on successful auth
+  /**
+   * Clear failed attempts on successful authentication
+   * @param userId - User ID to clear failed attempts for
+   */
   private clearFailedAttempts(userId: string): void {
     this.failedAttempts.delete(userId)
   }
 
-  // Inject Supabase client for server operations
+  /**
+   * Set Supabase client for database operations
+   * @param supabase - Supabase client instance
+   */
   setSupabaseClient(supabase: any): void {
     this.supabase = supabase
   }
 
-  // Helper to derive an AES key from a password for encrypting/decrypting the RSA private key
+  /**
+   * Derive AES key from password using PBKDF2 for encrypting/decrypting RSA private key
+   * @param password - User password
+   * @param salt - Cryptographic salt
+   * @returns Derived AES key for encryption/decryption
+   */
   private async deriveAESKeyFromPassword(password: string, salt: Uint8Array): Promise<CryptoKey> {
     const encoder = new TextEncoder()
     const passwordBuffer = encoder.encode(password)
@@ -97,7 +119,10 @@ export class EncryptionService {
     }
   }
   
-  // Generate RSA key pair for encryption
+  /**
+   * Generate RSA key pair for encryption/decryption operations
+   * @returns Generated RSA key pair (2048-bit)
+   */
   async generateKeyPair(): Promise<CryptoKeyPair> {
     try {
       const keyPair = await crypto.subtle.generateKey(
@@ -118,7 +143,11 @@ export class EncryptionService {
     }
   }
   
-  // Export public key as base64 string
+  /**
+   * Export public key as base64 string for storage/transmission
+   * @param publicKey - RSA public key to export
+   * @returns Base64 encoded public key
+   */
   async exportPublicKey(publicKey: CryptoKey): Promise<string> {
     try {
       const exported = await crypto.subtle.exportKey('spki', publicKey)
