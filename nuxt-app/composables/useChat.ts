@@ -387,19 +387,37 @@ export const useChat = () => {
       
       const conversationData = data as any[] || []
       
-      return conversationData.map((conv: any) => ({
-        id: conv.user_id,
-        email: '', // Not returned by function for privacy
-        username: conv.username,
-        displayName: conv.display_name,
-        avatar: conv.avatar,
-        publicKey: conv.public_key,
-        createdAt: new Date(), // Not needed for conversations
-        lastSeen: new Date(conv.last_seen),
-        lastMessage: conv.last_message_content || '',
-        lastMessageTime: conv.last_message_time ? new Date(conv.last_message_time) : new Date(),
-        unreadCount: conv.unread_count || 0
+      // Decrypt last messages for each conversation
+      const conversations = await Promise.all(conversationData.map(async (conv: any) => {
+        let decryptedLastMessage = ''
+        
+        if (conv.last_message_content) {
+          try {
+            console.log('🔓 Decrypting last message for user:', conv.username)
+            decryptedLastMessage = await encryptionService.decryptMessage(conv.last_message_content)
+            console.log('✅ Last message decrypted successfully')
+          } catch (error) {
+            console.error('❌ Error decrypting last message:', error)
+            decryptedLastMessage = '[Message could not be decrypted]'
+          }
+        }
+        
+        return {
+          id: conv.user_id,
+          email: '', // Not returned by function for privacy
+          username: conv.username,
+          displayName: conv.display_name,
+          avatar: conv.avatar,
+          publicKey: conv.public_key,
+          createdAt: new Date(), // Not needed for conversations
+          lastSeen: new Date(conv.last_seen),
+          lastMessage: decryptedLastMessage,
+          lastMessageTime: conv.last_message_time ? new Date(conv.last_message_time) : new Date(),
+          unreadCount: conv.unread_count || 0
+        }
       }))
+      
+      return conversations
     } catch (error) {
       console.error('❌ Error getting user conversations:', error)
       return []

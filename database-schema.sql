@@ -156,7 +156,7 @@ RETURNS TABLE (
   sender_id UUID,
   receiver_id UUID,
   encrypted_content TEXT,
-  timestamp TIMESTAMPTZ,
+  msg_timestamp TIMESTAMPTZ,
   delivered BOOLEAN,
   read BOOLEAN
 ) AS $$
@@ -256,7 +256,12 @@ BEGIN
         WHEN m.sender_id = current_user_id THEN m.receiver_id
         ELSE m.sender_id
       END as other_user_id,
-      m.encrypted_content,
+      -- Return the correct encrypted content based on who can decrypt it
+      CASE 
+        WHEN m.receiver_id = current_user_id THEN m.encrypted_content
+        WHEN m.sender_id = current_user_id THEN COALESCE(m.encrypted_content_for_sender, m.encrypted_content)
+        ELSE m.encrypted_content
+      END as encrypted_content,
       m.timestamp,
       ROW_NUMBER() OVER (
         PARTITION BY 
