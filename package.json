@@ -4,9 +4,12 @@
   "description": "Workspace scripts for Chattr chat application",
   "scripts": {
     "dev": "concurrently \"cd server && npm start\" \"cd nuxt-app && npm run dev\"",
+    "dev:all": "concurrently \"cd server && npm run dev\" \"cd nuxt-app && npm run dev\"",
+    "dev:nuxt": "cd nuxt-app && npm run dev",
+    "dev:socket": "cd server && npm run dev",
     "install-all": "cd server && npm install && cd ../nuxt-app && npm install",
     "clean": "cd server && rm -rf node_modules && cd ../nuxt-app && rm -rf node_modules .nuxt",
-    "setup": "npm run install-all && echo '✅ Dependencies installed! Now set up Supabase using SUPABASE_SETUP.md'"
+    "start:prod": "concurrently \"cd server && npm start\" \"cd nuxt-app && npm run build && npm run preview\""
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

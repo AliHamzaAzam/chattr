@@ -252,6 +252,7 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted, onUnmounted } from 'vue'
 import type { User } from '~/types'
 
 definePageMeta({
@@ -378,8 +379,14 @@ const formatTime = (date: Date | string) => {
 }
 
 // Lifecycle
-onMounted(() => {
-  initializeChat()
+onMounted(async () => {
+  await initializeChat()
+})
+
+// Cleanup on unmount
+onUnmounted(() => {
+  const socketService = SocketService.getInstance()
+  socketService.disconnect()
 })
 
 // Close dropdowns when clicking outside

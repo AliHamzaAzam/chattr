@@ -2,19 +2,27 @@ const express = require('express')
 const { createServer } = require('http')
 const { Server } = require('socket.io')
 const cors = require('cors')
+require('dotenv').config()
 
 const app = express()
 const server = createServer(app)
 
+// Get CORS origins from environment or use defaults
+const corsOrigins = process.env.CORS_ORIGINS 
+  ? process.env.CORS_ORIGINS.split(',').map(url => url.trim())
+  : ["http://localhost:3001", "http://127.0.0.1:3001", "http://localhost:3000", "http://127.0.0.1:3000"]
+
+console.log('CORS Origins:', corsOrigins)
+
 // Configure CORS
 app.use(cors({
-  origin: ["http://localhost:3000", "http://127.0.0.1:3000"],
+  origin: corsOrigins,
   credentials: true
 }))
 
 const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:3000", "http://127.0.0.1:3000"],
+    origin: corsOrigins,
     methods: ["GET", "POST"],
     credentials: true
   }
@@ -105,8 +113,10 @@ io.on('connection', (socket) => {
   })
 })
 
-const PORT = process.env.PORT || 3004
+const PORT = process.env.PORT || 3002
+const HOST = process.env.HOST || 'localhost'
 
-server.listen(PORT, () => {
-  console.log(`Socket.IO server running on port ${PORT}`)
+server.listen(PORT, HOST, () => {
+  console.log(`Socket.IO server running on http://${HOST}:${PORT}`)
+  console.log('CORS Origins:', corsOrigins)
 })

@@ -189,8 +189,14 @@ const handleSignUp = async () => {
   }
   
   try {
-    await signUp(email.value, password.value, username.value, displayName.value)
-    await navigateTo('/auth/login?message=Account created successfully. Please check your email for verification.')
+    const result = await signUp(email.value, password.value, username.value, displayName.value)
+    
+    if (result.requiresEmailConfirmation) {
+      await navigateTo('/auth/login?message=' + encodeURIComponent(result.message || 'Please check your email for verification.'))
+    } else {
+      // Email confirmation is disabled, user is immediately active
+      await navigateTo('/chat')
+    }
   } catch (err: any) {
     error.value = err.message
   }

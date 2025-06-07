@@ -32,6 +32,23 @@ export interface AuthState {
   user: User | null
   isAuthenticated: boolean
   isLoading: boolean
+  encryptionPassword?: string // Temporarily store password for encryption service - expires after 30 minutes
+  passwordExpiration?: number // Timestamp when password expires
+}
+
+// Interface for the raw user data from Supabase (snake_case)
+export interface DbUser {
+  id: string;
+  email: string;
+  username: string;
+  display_name: string;
+  avatar?: string;
+  public_key: string;
+  encrypted_private_key?: string; // Server-stored encrypted private key
+  key_salt?: string;              // Salt for key derivation
+  key_iv?: string;                // IV for key encryption
+  created_at: string; // ISO string from DB
+  last_seen: string;  // ISO string from DB
 }
 
 export interface EncryptionKeys {
