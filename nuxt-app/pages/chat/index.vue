@@ -1,11 +1,41 @@
 <template>
   <div class="flex h-screen bg-gray-100">
+    <!-- Mobile overlay backdrop -->
+    <div 
+      v-if="showSidebar && isMobile" 
+      @click="showSidebar = false"
+      class="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+    ></div>
+
     <!-- Sidebar -->
-    <div class="w-80 bg-white border-r border-gray-200 flex flex-col">
+    <div 
+      class="bg-white border-r border-gray-200 flex flex-col transition-transform duration-300 ease-in-out z-50"
+      :class="{
+        // Desktop: always visible, fixed width
+        'w-80': !isMobile,
+        // Mobile: full screen when showing sidebar, overlay when not
+        'fixed inset-0 w-full': isMobile && showSidebar,
+        'fixed inset-y-0 left-0 w-80 transform -translate-x-full': isMobile && !showSidebar,
+        // Tablet: responsive width
+        'w-64 md:w-80': isTablet && !isMobile
+      }"
+    >
       <!-- Header -->
       <div class="p-4 border-b border-gray-200">
         <div class="flex items-center justify-between">
-          <h1 class="text-xl font-bold text-gray-900">chattr</h1>
+          <div class="flex items-center gap-3">
+            <!-- Mobile back button (only show when chat is selected) -->
+            <button
+              v-if="isMobile && selectedConversation"
+              @click="closeMobileChat"
+              class="p-1 text-gray-500 hover:text-gray-700 lg:hidden"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+              </svg>
+            </button>
+            <h1 class="text-xl font-bold text-gray-900">chattr</h1>
+          </div>
           <div class="flex items-center gap-2">
             <button
               @click="showUserSearch = true"
@@ -110,41 +140,81 @@
     </div>
     
     <!-- Main chat area -->
-    <div class="flex-1 flex flex-col h-screen">
+    <div 
+      class="flex-1 flex flex-col h-screen"
+      :class="{
+        // On mobile: completely hide when sidebar is showing
+        'hidden': isMobile && showSidebar,
+        'flex': !isMobile || !showSidebar
+      }"
+    >
       <div v-if="!selectedConversation" class="flex-1 flex items-center justify-center">
-        <div class="text-center text-gray-500">
+        <div class="text-center text-gray-500 px-4">
+          <!-- Mobile menu button when no conversation selected -->
+          <button
+            v-if="isMobile"
+            @click="showSidebar = true"
+            class="absolute top-4 left-4 p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full"
+          >
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+            </svg>
+          </button>
+          
           <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
           </svg>
           <h3 class="text-lg font-medium text-gray-900 mb-2">Select a conversation</h3>
-          <p>Choose a conversation from the sidebar to start messaging</p>
+          <p class="text-sm md:text-base">Choose a conversation from the sidebar to start messaging</p>
         </div>
       </div>
       
       <div v-else class="flex-1 flex flex-col h-screen">
         <!-- Chat header -->
-        <div class="p-4 border-b border-gray-200 bg-white flex-shrink-0">
+        <div class="p-3 md:p-4 border-b border-gray-200 bg-white flex-shrink-0">
           <div class="flex items-center">
-            <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center mr-3">
-              <span class="text-sm font-medium text-gray-700">
+            <!-- Mobile back button -->
+            <button
+              v-if="isMobile"
+              @click="closeMobileChat"
+              class="p-1 mr-2 text-gray-500 hover:text-gray-700"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+              </svg>
+            </button>
+            
+            <div class="w-8 h-8 md:w-10 md:h-10 bg-gray-300 rounded-full flex items-center justify-center mr-3">
+              <span class="text-sm md:text-base font-medium text-gray-700">
                 {{ selectedConversation.displayName.charAt(0).toUpperCase() }}
               </span>
             </div>
-            <div>
-              <h2 class="text-lg font-semibold text-gray-900">{{ selectedConversation.displayName }}</h2>
-              <p class="text-sm text-gray-500">
+            <div class="flex-1 min-w-0">
+              <h2 class="text-base md:text-lg font-semibold text-gray-900 truncate">{{ selectedConversation.displayName }}</h2>
+              <p class="text-xs md:text-sm text-gray-500 truncate">
                 @{{ selectedConversation.username }}
                 <span v-if="onlineUsers.includes(selectedConversation.id)" class="text-green-500">• Online</span>
                 <span v-else class="text-gray-400">• Last seen {{ formatTime(selectedConversation.lastSeen) }}</span>
               </p>
             </div>
+            
+            <!-- Mobile menu button for options -->
+            <button
+              v-if="isMobile"
+              @click="showUserMenu = !showUserMenu"
+              class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
+              </svg>
+            </button>
           </div>
         </div>
         
         <!-- Messages -->
-        <div ref="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
+        <div ref="messagesContainer" class="flex-1 overflow-y-auto p-3 md:p-4 space-y-3 md:space-y-4 min-h-0">
           <div v-if="messages.length === 0" class="text-center text-gray-500 py-8">
-            <p>No messages yet. Start the conversation!</p>
+            <p class="text-sm md:text-base">No messages yet. Start the conversation!</p>
           </div>
           
           <div v-for="message in messages" :key="message.id" class="flex">
@@ -201,8 +271,8 @@
         </div>
         
         <!-- Message input -->
-        <div class="p-4 border-t border-gray-200 bg-white flex-shrink-0">
-          <form @submit.prevent="sendMessage" class="flex items-end gap-3">
+        <div class="p-3 md:p-4 border-t border-gray-200 bg-white flex-shrink-0">
+          <form @submit.prevent="sendMessage" class="flex items-end gap-2 md:gap-3">
             <div class="flex-1">
               <textarea
                 v-model="newMessage"
@@ -210,16 +280,16 @@
                 @input="handleTyping"
                 placeholder="Type a message..."
                 rows="1"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm md:text-base"
                 style="max-height: 120px;"
               ></textarea>
             </div>
             <button
               type="submit"
               :disabled="!newMessage.trim() || sending"
-              class="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              class="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
             >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
               </svg>
             </button>
@@ -229,8 +299,8 @@
     </div>
     
     <!-- User search modal -->
-    <div v-if="showUserSearch" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+    <div v-if="showUserSearch" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-lg p-4 md:p-6 w-full max-w-md">
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-lg font-semibold">Start New Chat</h3>
           <button @click="showUserSearch = false" class="text-gray-400 hover:text-gray-600">
@@ -246,13 +316,13 @@
             @input="searchUsers"
             type="text"
             placeholder="Search users by username..."
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm md:text-base"
           />
         </div>
         
         <div class="max-h-60 overflow-y-auto">
           <div v-if="searchResults.length === 0 && userSearchQuery" class="text-center text-gray-500 py-4">
-            No users found
+            <p class="text-sm md:text-base">No users found</p>
           </div>
           <div
             v-for="user in searchResults"
@@ -260,14 +330,14 @@
             @click="startChat(user)"
             class="flex items-center p-3 hover:bg-gray-50 rounded-lg cursor-pointer"
           >
-            <div class="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center mr-3">
+            <div class="w-8 h-8 md:w-10 md:h-10 bg-gray-300 rounded-full flex items-center justify-center mr-3">
               <span class="text-sm font-medium text-gray-700">
                 {{ user.displayName.charAt(0).toUpperCase() }}
               </span>
             </div>
-            <div>
-              <div class="font-medium text-gray-900">{{ user.displayName }}</div>
-              <div class="text-sm text-gray-500">@{{ user.username }}</div>
+            <div class="min-w-0 flex-1">
+              <div class="font-medium text-gray-900 text-sm md:text-base truncate">{{ user.displayName }}</div>
+              <div class="text-xs md:text-sm text-gray-500 truncate">@{{ user.username }}</div>
             </div>
           </div>
         </div>
@@ -306,6 +376,35 @@ const typingTimeout = ref<NodeJS.Timeout>()
 const messageRefs = ref<Map<string, HTMLElement>>(new Map())
 const intersectionObserver = ref<IntersectionObserver | null>(null)
 
+// Responsive state
+const showSidebar = ref(false)
+const windowWidth = ref(0)
+
+// Responsive computed properties
+const isMobile = computed(() => windowWidth.value < 768)
+const isTablet = computed(() => windowWidth.value >= 768 && windowWidth.value < 1024)
+const isDesktop = computed(() => windowWidth.value >= 1024)
+
+// Watch for screen size changes
+watch(isMobile, (newIsMobile, oldIsMobile) => {
+  console.log('🔄 Screen size changed:', { newIsMobile, oldIsMobile, showSidebar: showSidebar.value, selectedConversation: !!selectedConversation.value })
+  
+  // If changing from desktop to mobile
+  if (newIsMobile && !oldIsMobile) {
+    if (selectedConversation.value) {
+      // If a conversation is selected, show chat (hide sidebar)
+      showSidebar.value = false
+    } else {
+      // If no conversation selected, show sidebar
+      showSidebar.value = true
+    }
+  }
+  // If changing from mobile to desktop, always show sidebar
+  if (!newIsMobile && oldIsMobile) {
+    showSidebar.value = true
+  }
+})
+
 // Computed
 const filteredConversations = computed(() => {
   if (!searchQuery.value) return conversations.value
@@ -329,9 +428,24 @@ const loadConversations = async () => {
   }
 }
 
+// Responsive methods
+const updateWindowWidth = () => {
+  windowWidth.value = window.innerWidth
+}
+
+const closeMobileChat = () => {
+  selectedConversation.value = null
+  showSidebar.value = true
+}
+
 const selectConversation = async (user: User) => {
   selectedConversation.value = user
   showUserMenu.value = false
+  
+  // On mobile, hide sidebar when selecting conversation
+  if (isMobile.value) {
+    showSidebar.value = false
+  }
   
   // Clear previous message refs and reset observer
   messageRefs.value.clear()
@@ -436,13 +550,14 @@ const formatTime = (date: Date | string) => {
 }
 
 // Message ref handling for intersection observer
-const setMessageRef = (el: HTMLElement | null, message: any) => {
+const setMessageRef = (el: Element | ComponentPublicInstance | null, message: any) => {
   if (el && message) {
-    messageRefs.value.set(message.id, el)
+    const htmlElement = el as HTMLElement
+    messageRefs.value.set(message.id, htmlElement)
     
     // Observe message for read receipts if it's a received message
     if (intersectionObserver.value && message.senderId !== authState.value.user?.id && !message.read) {
-      intersectionObserver.value.observe(el)
+      intersectionObserver.value.observe(htmlElement)
     }
   }
 }
@@ -481,6 +596,23 @@ const setupIntersectionObserver = () => {
 
 // Lifecycle
 onMounted(async () => {
+  // Setup responsive handling
+  updateWindowWidth()
+  window.addEventListener('resize', updateWindowWidth)
+  
+  console.log('🚀 Initial mount:', { windowWidth: windowWidth.value, isMobile: isMobile.value })
+  
+  // Initialize sidebar visibility based on screen size
+  if (isMobile.value) {
+    // On mobile, show sidebar by default (conversation list)
+    showSidebar.value = true
+    console.log('📱 Mobile detected, showing sidebar')
+  } else {
+    // On desktop, show sidebar by default
+    showSidebar.value = true
+    console.log('🖥️ Desktop detected, showing sidebar')
+  }
+  
   // Setup intersection observer for read receipts
   setupIntersectionObserver()
   
@@ -526,6 +658,8 @@ onMounted(async () => {
 
 // Cleanup on unmount
 onUnmounted(() => {
+  window.removeEventListener('resize', updateWindowWidth)
+  
   const socketService = SocketService.getInstance()
   socketService.disconnect()
   

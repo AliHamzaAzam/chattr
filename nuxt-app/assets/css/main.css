@@ -10,10 +10,17 @@
 
 @layer components {
   .chat-bubble {
-    max-width: 20rem;
-    padding: 0.5rem 1rem;
-    border-radius: 0.5rem;
+    max-width: 16rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.75rem;
     word-break: break-words;
+  }
+  
+  @media (min-width: 640px) {
+    .chat-bubble {
+      max-width: 20rem;
+      padding: 0.5rem 1rem;
+    }
   }
   
   @media (min-width: 1024px) {
