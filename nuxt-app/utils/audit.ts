@@ -32,25 +32,49 @@ export class AuditLogger {
     details: Record<string, any> = {}
   ): Promise<void> {
     try {
-      const logEntry = {
+      // Prepare the audit log entry
+      const auditEntry = {
+        user_id: userId, // Supabase will handle UUID conversion
         event_type: eventType,
-        user_id: userId,
-        timestamp: new Date().toISOString(),
+        event_data: details,
         ip_address: await this.getClientIP(),
-        user_agent: typeof window !== 'undefined' ? window.navigator.userAgent : 'server',
-        details: JSON.stringify(details)
+        user_agent: typeof window !== 'undefined' ? window.navigator.userAgent : 'server'
+        // timestamp is set by database DEFAULT NOW()
       }
       
       // Log to console in development
       if (process.dev) {
-        console.log('🔍 Security Event:', logEntry)
+        console.log('🔍 Security Event:', auditEntry)
       }
       
-      // Store in database if available
       if (this.supabase) {
-        await this.supabase
-          .from('security_audit_log')
-          .insert([logEntry])
+        try {
+          const { error } = await this.supabase
+            .from('security_audit_log')
+            .insert([auditEntry])
+
+          if (error) {
+            throw error
+          }
+
+          if (process.dev) {
+            console.log('✅ Audit log saved to database')
+          }
+        } catch (dbError: any) {
+          // Handle specific RLS errors
+          if (dbError?.message?.includes('row-level security policy')) {
+            console.warn('🔍 RLS policy preventing audit log insert. Please check Supabase RLS policies for security_audit_log table.')
+          } else if (dbError?.message?.includes('operator does not exist')) {
+            console.warn('🔍 Database schema mismatch. Please run the latest SQL migration for security_audit_log.')
+          } else {
+            console.warn('🔍 Audit log database insert failed:', dbError?.message || dbError)
+          }
+          
+          // Don't throw - just warn and continue
+          if (process.dev) {
+            console.log('Continuing without database audit logging...')
+          }
+        }
       }
     } catch (error) {
       console.error('Failed to log security event:', error)

@@ -16,7 +16,6 @@ export default defineNuxtPlugin(() => {
      */
     const clearSensitiveDataOnBrowserEvent = () => {
       if (authState.value.encryptionPassword) {
-        console.log('🔐 Clearing encryption password due to browser event')
         clearSensitiveData()
         
         // Clear encryption service keys
@@ -36,7 +35,6 @@ export default defineNuxtPlugin(() => {
     const checkPasswordExpiration = () => {
       if (authState.value.passwordExpiration && 
           Date.now() > authState.value.passwordExpiration) {
-        console.log('🔐 Password expired - clearing from memory')
         clearSensitiveData()
         
         const encryptionService = EncryptionService.getInstance()

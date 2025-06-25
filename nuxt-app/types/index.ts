@@ -75,27 +75,4 @@ export interface DbUser {
   last_seen: string;  // ISO string from DB
 }
 
-/**
- * Encryption keys interface for RSA key pairs
- */
-export interface EncryptionKeys {
-  publicKey: CryptoKey
-  privateKey: CryptoKey
-}
 
-/**
- * Message payload interface for sending encrypted messages
- */
-export interface MessagePayload {
-  content: string
-  receiverId: string
-  encryptedContent: string
-}
-
-/**
- * Socket message interface for real-time communication
- */
-export interface SocketMessage {
-  type: 'message' | 'typing' | 'online' | 'offline'
-  data: any
-}

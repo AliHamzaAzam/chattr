@@ -60,18 +60,6 @@ export class SecurityUtils {
   }
   
   /**
-   * Generate cryptographically secure random string
-   * @param length - Length of the random string (default: 32)
-   * @returns Secure random string
-   */
-  static generateSecureRandom(length: number = 32): string {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-    const array = new Uint8Array(length)
-    crypto.getRandomValues(array)
-    return Array.from(array, byte => chars[byte % chars.length]).join('')
-  }
-  
-  /**
    * Check if password is in the list of commonly used passwords
    * @param password - Password to check
    * @returns True if password is commonly used

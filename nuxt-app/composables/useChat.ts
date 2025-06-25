@@ -1,4 +1,4 @@
-import type { ChatMessage, ChatRoom, User } from '~/types'
+import type { ChatMessage, User } from '~/types'
 import { EncryptionService } from '~/utils/encryption'
 import { SocketService } from '~/utils/socket'
 import { ConfigService } from '~/utils/config'
@@ -17,7 +17,6 @@ export const useChat = () => {
   const securityConfig = config.getSecurityConfig()
   
   const messages = useState<ChatMessage[]>('chat.messages', () => [])
-  const activeRoom = useState<ChatRoom | null>('chat.activeRoom', () => null)
   const onlineUsers = useState<string[]>('chat.onlineUsers', () => [])
   const typingUsers = useState<Set<string>>('chat.typingUsers', () => new Set())
   const initialized = useState<boolean>('chat.initialized', () => false)
@@ -48,7 +47,6 @@ export const useChat = () => {
       const expirationTime = Date.now() + (securityConfig.passwordExpirationMinutes * 60 * 1000)
       updateEncryptionPassword(password, expirationTime)
       needsPasswordPrompt.value = false
-      console.log('🔐 Encryption password validated and set securely')
     } catch (error) {
       console.error('🔐 Password validation failed:', error)
       throw error
@@ -67,7 +65,6 @@ export const useChat = () => {
   
   // Initialize chat
   const initializeChat = async () => {
-    console.log('Initializing chat, user:', authState.value.user?.id, 'already initialized:', initialized.value)
     if (!authState.value.user || initialized.value) return
     
     // Inject Supabase client into encryption service
@@ -522,14 +519,12 @@ export const useChat = () => {
   const cleanup = () => {
     socketService.disconnect()
     messages.value = []
-    activeRoom.value = null
     onlineUsers.value = []
     typingUsers.value.clear()
   }
   
   return {
     messages: readonly(messages),
-    activeRoom: readonly(activeRoom),
     onlineUsers: readonly(onlineUsers),
     typingUsers: readonly(typingUsers),
     initialized: readonly(initialized),

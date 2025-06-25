@@ -25,8 +25,6 @@ onMounted(async () => {
   
   if (user.value) {
     try {
-      console.log('Processing auth callback for user:', user.value.id)
-      
       // Check if user profile exists
       const { data: existingProfile } = await supabase
         .from('users')
@@ -35,18 +33,14 @@ onMounted(async () => {
         .single()
       
       if (!existingProfile) {
-        console.log('No profile found - creating one')
-        
         // Check if this is an OAuth user or email confirmation
         const isOAuth = user.value.app_metadata?.provider !== 'email'
         
         if (isOAuth) {
           // OAuth user - create profile immediately
-          console.log('OAuth user - creating profile')
           await createOAuthProfile()
         } else {
           // Email confirmation - check if we have signup data
-          console.log('Email confirmed user - checking for signup data')
           const signupData = user.value.user_metadata
           
           if (signupData?.username && signupData?.display_name) {
@@ -64,7 +58,6 @@ onMounted(async () => {
           }
         }
       } else {
-        console.log('Profile already exists')
         // For existing users, we'll load keys during the sign-in process
         // The EncryptionService will need to be initialized with their password
       }
@@ -120,10 +113,9 @@ const createOAuthProfile = async () => {
       public_key: publicKey,
       created_at: new Date().toISOString(),
       last_seen: new Date().toISOString()
-    })
+    } as any)
   
   // Store keys locally (with empty password for OAuth users)
   // For OAuth users, keys are kept in memory only for the session
-  console.log('OAuth profile created successfully')
 }
 </script>

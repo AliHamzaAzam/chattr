@@ -73,11 +73,10 @@
           </div>
         </div>
         
-        <!-- Search bar -->
-        <div class="mt-3">
+        <!-- Search bar - removed as functionality is not implemented -->
+        <div class="mt-3" style="display: none;">
           <div class="relative">
             <input
-              v-model="searchQuery"
               type="text"
               placeholder="Search conversations..."
               class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -101,7 +100,7 @@
         
         <div v-else>
           <div
-            v-for="conversation in filteredConversations"
+            v-for="conversation in conversations"
             :key="conversation.id"
             @click="selectConversation(conversation)"
             class="p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
@@ -361,7 +360,6 @@ const { authState, signOut } = useAuth()
 const { messages, onlineUsers, initializeChat, sendMessage: sendChatMessage, getChatHistory, searchUsers: searchUsersApi, getUserConversations, startTyping, stopTyping, markMessageAsRead } = useChat()
 
 // State
-const searchQuery = ref('')
 const selectedConversation = ref<User | null>(null)
 const conversations = ref<User[]>([])
 const newMessage = ref('')
@@ -387,8 +385,6 @@ const isDesktop = computed(() => windowWidth.value >= 1024)
 
 // Watch for screen size changes
 watch(isMobile, (newIsMobile, oldIsMobile) => {
-  console.log('🔄 Screen size changed:', { newIsMobile, oldIsMobile, showSidebar: showSidebar.value, selectedConversation: !!selectedConversation.value })
-  
   // If changing from desktop to mobile
   if (newIsMobile && !oldIsMobile) {
     if (selectedConversation.value) {
@@ -406,23 +402,12 @@ watch(isMobile, (newIsMobile, oldIsMobile) => {
 })
 
 // Computed
-const filteredConversations = computed(() => {
-  if (!searchQuery.value) return conversations.value
-  return conversations.value.filter(conv => 
-    conv.displayName.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-    conv.username.toLowerCase().includes(searchQuery.value.toLowerCase())
-  )
-})
 
 // Methods
 const loadConversations = async () => {
   try {
-    console.log('📋 Loading conversations...')
-    console.log('🔍 Auth state:', authState.value.user?.id)
     const conversationList = await getUserConversations()
-    console.log('📊 Raw conversation data:', conversationList)
     conversations.value = conversationList
-    console.log(`✅ Loaded ${conversationList.length} conversations`)
   } catch (error) {
     console.error('❌ Failed to load conversations:', error)
   }
@@ -600,59 +585,19 @@ onMounted(async () => {
   updateWindowWidth()
   window.addEventListener('resize', updateWindowWidth)
   
-  console.log('🚀 Initial mount:', { windowWidth: windowWidth.value, isMobile: isMobile.value })
-  
   // Initialize sidebar visibility based on screen size
   if (isMobile.value) {
     // On mobile, show sidebar by default (conversation list)
     showSidebar.value = true
-    console.log('📱 Mobile detected, showing sidebar')
   } else {
     // On desktop, show sidebar by default
     showSidebar.value = true
-    console.log('🖥️ Desktop detected, showing sidebar')
   }
   
   // Setup intersection observer for read receipts
   setupIntersectionObserver()
   
   await initializeChat()
-  
-  // Debug: Check database contents
-  try {
-    console.log('🔍 Debug: Checking database contents...')
-    
-    // Check users table
-    const { data: users, error: usersError } = await supabase
-      .from('users')
-      .select('id, username, display_name')
-      .limit(5)
-    
-    if (usersError) {
-      console.error('❌ Users query error:', usersError)
-    } else {
-      console.log('👥 Users in database:', users)
-    }
-    
-    // Check messages table
-    const { data: messages, error: messagesError } = await supabase
-      .from('messages')
-      .select('id, sender_id, receiver_id, timestamp')
-      .limit(5)
-    
-    if (messagesError) {
-      console.error('❌ Messages query error:', messagesError)
-    } else {
-      console.log('💬 Messages in database:', messages)
-    }
-    
-    // Check current user
-    console.log('🔍 Current user:', authState.value.user)
-    
-  } catch (debugError) {
-    console.error('❌ Debug queries failed:', debugError)
-  }
-  
   await loadConversations()
 })
 

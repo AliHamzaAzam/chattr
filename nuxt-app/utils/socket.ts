@@ -1,5 +1,5 @@
 import { io, Socket } from 'socket.io-client'
-import type { SocketMessage, ChatMessage } from '~/types'
+import type { ChatMessage } from '~/types'
 
 /**
  * Socket service for real-time communication
@@ -120,18 +120,6 @@ export class SocketService {
     }
   }
   
-  joinRoom(roomId: string): void {
-    if (this.socket && this.connected) {
-      this.socket.emit('join-room', roomId)
-    }
-  }
-  
-  leaveRoom(roomId: string): void {
-    if (this.socket && this.connected) {
-      this.socket.emit('leave-room', roomId)
-    }
-  }
-  
   onMessageSent(callback: (data: { messageId: string, timestamp: string }) => void): void {
     if (this.socket) {
       this.socket.off('message-sent') // Remove existing listeners
@@ -163,9 +151,5 @@ export class SocketService {
     if (this.socket && this.connected) {
       this.socket.emit('message-read', { messageId, senderId })
     }
-  }
-  
-  isConnected(): boolean {
-    return this.connected
   }
 }

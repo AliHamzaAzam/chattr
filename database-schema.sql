@@ -5,6 +5,7 @@
 -- Enable Row Level Security
 ALTER TABLE IF EXISTS public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.security_audit_log ENABLE ROW LEVEL SECURITY;
 
 -- Drop existing trigger and function that was causing conflicts
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
@@ -43,6 +44,18 @@ CREATE TABLE IF NOT EXISTS public.messages (
   CONSTRAINT different_users CHECK (sender_id != receiver_id)
 );
 
+-- Create security audit log table
+CREATE TABLE IF NOT EXISTS public.security_audit_log (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  event_type VARCHAR(50) NOT NULL,
+  event_data JSONB DEFAULT '{}',
+  ip_address TEXT,
+  user_agent TEXT,
+  timestamp TIMESTAMPTZ DEFAULT NOW(),
+  session_id UUID
+);
+
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_messages_sender_receiver ON public.messages(sender_id, receiver_id);
 CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON public.messages(timestamp DESC);
@@ -50,6 +63,9 @@ CREATE INDEX IF NOT EXISTS idx_messages_receiver_unread ON public.messages(recei
 CREATE INDEX IF NOT EXISTS idx_users_username ON public.users(username);
 CREATE INDEX IF NOT EXISTS idx_users_last_seen ON public.users(last_seen DESC);
 CREATE INDEX IF NOT EXISTS idx_users_email ON public.users(email);
+CREATE INDEX IF NOT EXISTS idx_security_audit_log_user_id ON public.security_audit_log(user_id);
+CREATE INDEX IF NOT EXISTS idx_security_audit_log_timestamp ON public.security_audit_log(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_security_audit_log_event_type ON public.security_audit_log(event_type);
 
 -- Drop existing policies to recreate them
 DROP POLICY IF EXISTS "Users can read all profiles" ON public.users;
@@ -58,6 +74,10 @@ DROP POLICY IF EXISTS "Users can insert own profile" ON public.users;
 DROP POLICY IF EXISTS "Users can read own messages" ON public.messages;
 DROP POLICY IF EXISTS "Users can send messages" ON public.messages;
 DROP POLICY IF EXISTS "Users can update message status" ON public.messages;
+DROP POLICY IF EXISTS "authenticated_users_can_insert_audit_logs" ON public.security_audit_log;
+DROP POLICY IF EXISTS "anon_users_can_insert_audit_logs" ON public.security_audit_log;
+DROP POLICY IF EXISTS "users_can_view_own_audit_logs" ON public.security_audit_log;
+DROP POLICY IF EXISTS "service_role_full_access_audit" ON public.security_audit_log;
 
 -- Row Level Security Policies for users table
 
@@ -88,6 +108,41 @@ CREATE POLICY "Users can send messages" ON public.messages
 -- This allows both senders and receivers to update message status for delivery confirmations
 CREATE POLICY "Users can update message status" ON public.messages
   FOR UPDATE USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
+
+-- Row Level Security Policies for security_audit_log table
+
+-- Allow authenticated users to insert audit logs
+CREATE POLICY "authenticated_users_can_insert_audit_logs" 
+ON public.security_audit_log 
+FOR INSERT 
+TO authenticated 
+WITH CHECK (true);
+
+-- Allow anonymous users to insert audit logs (for login attempts)
+CREATE POLICY "anon_users_can_insert_audit_logs" 
+ON public.security_audit_log 
+FOR INSERT 
+TO anon 
+WITH CHECK (true);
+
+-- Allow users to view their own audit logs
+CREATE POLICY "users_can_view_own_audit_logs" 
+ON public.security_audit_log 
+FOR SELECT 
+TO authenticated 
+USING (
+  user_id IS NULL OR 
+  user_id = auth.uid() OR
+  auth.uid()::text = user_id::text
+);
+
+-- Allow service role full access to audit logs
+CREATE POLICY "service_role_full_access_audit" 
+ON public.security_audit_log 
+FOR ALL 
+TO service_role 
+USING (true) 
+WITH CHECK (true);
 
 -- Function to safely update last_seen timestamp
 CREATE OR REPLACE FUNCTION public.update_last_seen(user_id UUID)
@@ -318,6 +373,9 @@ WHERE sender_id NOT IN (SELECT id FROM public.users)
 GRANT USAGE ON SCHEMA public TO authenticated;
 GRANT ALL ON public.users TO authenticated;
 GRANT ALL ON public.messages TO authenticated;
+GRANT INSERT, SELECT ON public.security_audit_log TO authenticated;
+GRANT INSERT ON public.security_audit_log TO anon;
+GRANT ALL ON public.security_audit_log TO service_role;
 GRANT EXECUTE ON FUNCTION public.update_last_seen(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_user_by_username(TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.search_users(TEXT) TO authenticated;
